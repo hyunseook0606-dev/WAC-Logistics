@@ -1,17 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="WAC">
-  <rect width="64" height="64" rx="10" fill="#FFFFFF"/>
-  <!-- WC mark aligned to official wac-logo.png -->
-  <g transform="translate(7,12)">
-    <path d="M1 38 L11 2 L17.2 2 L7.2 38 Z" fill="#1A2A3A"/>
-    <path d="M13.5 38 L23.5 2 L29.7 2 L19.7 38 Z" fill="#1A2A3A"/>
-    <path d="M26 38 L36 2 L42.2 2 L32.2 38 Z" fill="#1A2A3A"/>
-    <path d="M1 38 L3.4 28.5 L9.4 28.5 L7.2 38 Z" fill="#F05023"/>
-    <path d="M26 38 L28.4 28.5 L34.4 28.5 L32.2 38 Z" fill="#F05023"/>
+  <!-- Transparent — blends with browser chrome like airport tabs -->
+  <g transform="translate(4,10)">
+    <!-- W: three navy diagonals -->
+    <path d="M0 44 L12 0 H19 L7 44 Z" fill="#1A2A3A"/>
+    <path d="M14 44 L26 0 H33 L21 44 Z" fill="#1A2A3A"/>
+    <path d="M28 44 L40 0 H47 L35 44 Z" fill="#1A2A3A"/>
+    <!-- Orange tips -->
+    <path d="M0 44 L2.8 33 H9.8 L7 44 Z" fill="#F05023"/>
+    <path d="M28 44 L30.8 33 H37.8 L35 44 Z" fill="#F05023"/>
+    <!-- Orange C -->
     <path
-      d="M48 8 A15.5 15.5 0 1 0 48 32"
+      d="M52 6 A17 17 0 1 0 52 38"
       fill="none"
       stroke="#F05023"
-      stroke-width="7.5"
+      stroke-width="9"
       stroke-linecap="butt"
     />
   </g>
