@@ -69,8 +69,8 @@ export const MASTER_VALIDITY = {
   note: 'Roll over monthly — same pattern as cost item_origin.xlsx',
 } as const
 
-/** Default FX used on INV_AE260703101 (USD → HKD) */
-export const DEFAULT_USD_HKD = 7.8
+/** Default FX used on INV_AE260703101 (USD → HKD) — live fetch overrides in Desk UI */
+export { DEFAULT_USD_HKD } from './fx'
 
 export function calcLineAmount(
   charge: Pick<MasterCharge, 'min' | 'flat' | 'unit'>,

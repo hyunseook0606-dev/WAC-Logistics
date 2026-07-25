@@ -21,6 +21,7 @@ import {
   type VariableSlots,
 } from './originCost'
 import { Hero } from './Hero'
+import { fetchUsdToHkd } from './fx'
 
 type Cargo = {
   length: number
@@ -540,6 +541,131 @@ ${exWorkHtml}
   return { html, plain }
 }
 
+/** Desk formal cost sheet — HTML table for Outlook + TSV for Excel paste */
+function buildDeskCostSheetDraft(opts: {
+  origin: string
+  destination: string
+  length: number
+  width: number
+  height: number
+  weight: number
+  cw: number
+  carrierCode: string
+  carrierName: string
+  usdHkd: number
+  deskSheet: NonNullable<ReturnType<typeof buildDeskCostSheet>>
+}): { html: string; plain: string } {
+  const {
+    origin,
+    destination,
+    length,
+    width,
+    height,
+    weight,
+    cw,
+    carrierCode,
+    carrierName,
+    usdHkd,
+    deskSheet,
+  } = opts
+
+  const groupLabel = (g: string) =>
+    g === 'air' ? 'Air' : g === 'local' ? 'Local master' : 'Variable'
+
+  const headers = ['Charge', 'Type', 'Currency', 'Amount']
+  const rows = deskSheet.lines.map((l) => [
+    l.label,
+    groupLabel(l.group),
+    l.currency,
+    l.amount.toFixed(2),
+  ])
+
+  const plainMeta = [
+    'WAC Freight Desk — Formal Origin Cost',
+    `Lane\t${origin} → ${destination}`,
+    `Dims\t${length} x ${width} x ${height} cm`,
+    `Gross / C.W.\t${weight.toFixed(1)} / ${cw.toFixed(1)} KGS`,
+    `Carrier\t${carrierCode} ${carrierName}`,
+    `Master\t${MASTER_VALIDITY.effective} → ${MASTER_VALIDITY.expiry}`,
+    `FX USD/HKD\t${usdHkd.toFixed(4)}`,
+    '',
+  ].join('\n')
+
+  const plainTable = [
+    headers.join('\t'),
+    ...rows.map((r) => r.join('\t')),
+    '',
+    ['Air (HKD)', '', 'HKD', deskSheet.airHkd.toFixed(2)].join('\t'),
+    ['Local master (HKD)', '', 'HKD', deskSheet.localHkd.toFixed(2)].join('\t'),
+    [
+      'Variable slots (HKD)',
+      '',
+      'HKD',
+      deskSheet.variableHkd.toFixed(2),
+    ].join('\t'),
+    ['TOTAL', '', 'HKD', deskSheet.totalHkd.toFixed(2)].join('\t'),
+    ['TOTAL', '', 'USD', deskSheet.totalUsd.toFixed(2)].join('\t'),
+  ].join('\n')
+
+  const plain = `${plainMeta}
+${plainTable}
+
+* Variable slots (Cartage / Tunnel / Parking) entered per shipment.
+* Local lines from cost item_origin EXP master (auto max(min, flat×cw)).
+`
+
+  const th = (h: string, align = 'left') =>
+    `<th style="text-align:${align};padding:8px 10px;border:1px solid #94a3b8;background:#1A2A3A;color:#fff;font-weight:700;">${escapeHtml(h)}</th>`
+
+  const td = (v: string, align = 'left', bold = false) =>
+    `<td style="text-align:${align};padding:7px 10px;border:1px solid #cbd5e1;${bold ? 'font-weight:700;' : ''}">${escapeHtml(v)}</td>`
+
+  const htmlRows = rows
+    .map(
+      (r) =>
+        `<tr>${td(r[0])}${td(r[1])}${td(r[2], 'center')}${td(r[3], 'right', true)}</tr>`,
+    )
+    .join('')
+
+  const sumRow = (label: string, amount: string, accent = false) =>
+    `<tr style="${accent ? 'background:#F05023;color:#fff;' : 'background:#f8fafc;'}">
+      <td colspan="3" style="padding:8px 10px;border:1px solid #94a3b8;font-weight:700;">${escapeHtml(label)}</td>
+      <td style="padding:8px 10px;border:1px solid #94a3b8;text-align:right;font-weight:700;">${escapeHtml(amount)}</td>
+    </tr>`
+
+  const html = `<!DOCTYPE html>
+<html><body style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1A2A3A;line-height:1.4;">
+<div style="font-size:14pt;font-weight:700;color:#1A2A3A;">WAC Freight Desk — Formal Origin Cost</div>
+<br/>
+<table cellpadding="4" cellspacing="0" border="0" style="font-family:Calibri,Arial,sans-serif;font-size:11pt;">
+  <tr><td style="padding:2px 16px 2px 0;color:#64748b;">Lane</td><td><b>${escapeHtml(origin)} → ${escapeHtml(destination)}</b></td></tr>
+  <tr><td style="padding:2px 16px 2px 0;color:#64748b;">Dims / Weight</td><td>${length} x ${width} x ${height} cm · Gross ${weight.toFixed(1)} · C.W. <b>${cw.toFixed(1)} KGS</b></td></tr>
+  <tr><td style="padding:2px 16px 2px 0;color:#64748b;">Carrier</td><td><b>${escapeHtml(carrierCode)}</b> ${escapeHtml(carrierName)}</td></tr>
+  <tr><td style="padding:2px 16px 2px 0;color:#64748b;">Local master</td><td>${MASTER_VALIDITY.effective} → ${MASTER_VALIDITY.expiry}</td></tr>
+  <tr><td style="padding:2px 16px 2px 0;color:#64748b;">FX USD/HKD</td><td>${usdHkd.toFixed(4)}</td></tr>
+</table>
+<br/>
+<table cellpadding="0" cellspacing="0" border="1" style="border-collapse:collapse;border-color:#94a3b8;font-family:Calibri,Arial,sans-serif;font-size:11pt;width:100%;max-width:640px;">
+  <thead>
+    <tr>${th('Charge')}${th('Type')}${th('Currency', 'center')}${th('Amount', 'right')}</tr>
+  </thead>
+  <tbody>
+    ${htmlRows}
+    ${sumRow('Air subtotal (HKD)', `HKD ${deskSheet.airHkd.toFixed(2)}`)}
+    ${sumRow('Local master (HKD)', `HKD ${deskSheet.localHkd.toFixed(2)}`)}
+    ${sumRow('Variable slots (HKD)', `HKD ${deskSheet.variableHkd.toFixed(2)}`)}
+    ${sumRow('TOTAL HKD', `HKD ${deskSheet.totalHkd.toFixed(2)}`, true)}
+    ${sumRow('TOTAL USD', `USD ${deskSheet.totalUsd.toFixed(2)}`, true)}
+  </tbody>
+</table>
+<br/>
+<div style="color:#64748b;font-size:9pt;">* Variable slots (Cartage / Tunnel / Parking) entered per shipment.</div>
+<div style="color:#64748b;font-size:9pt;">* Local lines from cost item_origin EXP master — auto max(min, flat × C.W.).</div>
+</body></html>`
+
+  return { html, plain }
+}
+
 function AirlineLogo({
   code,
   name,
@@ -758,6 +884,11 @@ export default function App() {
   const [quoteMode, setQuoteMode] = useState<'public' | 'desk'>('public')
   const [deskCarrier, setDeskCarrier] = useState('')
   const [usdHkd, setUsdHkd] = useState(DEFAULT_USD_HKD)
+  const [fxMeta, setFxMeta] = useState<{
+    asOf: string
+    source: 'live' | 'fallback' | 'manual'
+  }>({ asOf: '', source: 'fallback' })
+  const [fxLoading, setFxLoading] = useState(false)
   const [deskFlags, setDeskFlags] = useState<DeskFlags>({
     xray: false,
     uld: false,
@@ -771,6 +902,18 @@ export default function App() {
     other: VARIABLE_SLOT_DEFAULTS.other,
     otherLabel: 'Other / Ad-hoc',
   })
+
+  const refreshFx = async () => {
+    setFxLoading(true)
+    const result = await fetchUsdToHkd()
+    setUsdHkd(Number(result.rate.toFixed(4)))
+    setFxMeta({ asOf: result.asOf, source: result.source })
+    setFxLoading(false)
+  }
+
+  useEffect(() => {
+    void refreshFx()
+  }, [])
 
   const volWeight = (cargo.length * cargo.width * cargo.height) / 6000
   const cw = Math.max(Number(cargo.weight) || 0, volWeight || 0)
@@ -905,41 +1048,27 @@ export default function App() {
 
   const handleCopyDeskSheet = async () => {
     if (!deskSheet || !selectedDeskQuote) return
-    const lines = deskSheet.lines
-      .map(
-        (l) =>
-          `${l.label}\t${l.currency} ${l.amount.toFixed(2)}${l.note ? `\t(${l.note})` : ''}`,
-      )
-      .join('\n')
-    const plain = `WAC Freight Desk — Formal Origin Cost
-Lane: ${origin} → ${destination}
-Dims: ${cargo.length}x${cargo.width}x${cargo.height} cm · Gross ${Number(cargo.weight).toFixed(1)} · C.W. ${cw.toFixed(1)} KGS
-Carrier: ${selectedDeskQuote.code} ${selectedDeskQuote.name}
-Master validity: ${MASTER_VALIDITY.effective} → ${MASTER_VALIDITY.expiry}
-FX USD/HKD: ${usdHkd}
-
-${lines}
-
-Air (HKD): ${deskSheet.airHkd.toFixed(2)}
-Local master (HKD): ${deskSheet.localHkd.toFixed(2)}
-Variable slots (HKD): ${deskSheet.variableHkd.toFixed(2)}
-TOTAL: HKD ${deskSheet.totalHkd.toFixed(2)}  /  USD ${deskSheet.totalUsd.toFixed(2)}
-
-* Variable slots (Cartage / Tunnel / Parking) entered per shipment.
-* Local lines from cost item_origin EXP master (auto max(min, flat×cw)).
-`
+    const { html, plain } = buildDeskCostSheetDraft({
+      origin,
+      destination,
+      length: cargo.length,
+      width: cargo.width,
+      height: cargo.height,
+      weight: Number(cargo.weight),
+      cw,
+      carrierCode: selectedDeskQuote.code,
+      carrierName: selectedDeskQuote.name,
+      usdHkd,
+      deskSheet,
+    })
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(plain)
-      } else {
-        await copyRichEmail(plain, plain)
-      }
+      await copyRichEmail(html, plain)
       setCopied('desk')
-      setToast('Desk cost sheet copied')
+      setToast('Cost sheet 표 복사됨 — Outlook / Excel에 붙여넣기')
       window.setTimeout(() => {
         setCopied('')
         setToast('')
-      }, 2200)
+      }, 2400)
     } catch {
       setToast('클립보드 복사에 실패했습니다.')
       window.setTimeout(() => setToast(''), 2200)
@@ -1307,17 +1436,40 @@ TOTAL: HKD ${deskSheet.totalHkd.toFixed(2)}  /  USD ${deskSheet.totalUsd.toFixed
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                          FX USD → HKD
-                        </label>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <label className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                            FX USD → HKD
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => void refreshFx()}
+                            disabled={fxLoading}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide text-wac-orange uppercase hover:underline disabled:opacity-50"
+                          >
+                            {fxLoading ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : null}
+                            Refresh
+                          </button>
+                        </div>
                         <input
                           type="number"
                           min={0.1}
                           step={0.0001}
                           value={usdHkd}
-                          onChange={(e) => setUsdHkd(Number(e.target.value))}
+                          onChange={(e) => {
+                            setUsdHkd(Number(e.target.value))
+                            setFxMeta((m) => ({ ...m, source: 'manual' }))
+                          }}
                           className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-wac-orange"
                         />
+                        <p className="mt-1 text-[10px] text-slate-400">
+                          {fxMeta.source === 'live' && fxMeta.asOf
+                            ? `Live (ECB) · ${fxMeta.asOf}`
+                            : fxMeta.source === 'manual'
+                              ? 'Manual override'
+                              : `Fallback ${DEFAULT_USD_HKD} (API unavailable)`}
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-3 pt-1">
                         {(
