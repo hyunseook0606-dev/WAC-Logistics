@@ -1,18 +1,31 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Plane,
   Box,
   ArrowRight,
   Copy,
   CheckCircle2,
+  MapPin,
+  ChevronRight,
+  Loader2,
+  Calculator,
+  Lock,
+  ExternalLink,
   Ship,
   Truck,
   Warehouse,
   ShoppingBag,
-  MapPin,
-  ChevronRight,
-  Loader2,
+  type LucideIcon,
 } from 'lucide-react'
+import {
+  VARIABLE_SLOT_DEFAULTS,
+  MASTER_VALIDITY,
+  DEFAULT_USD_HKD,
+  buildDeskCostSheet,
+  type DeskFlags,
+  type VariableSlots,
+} from './originCost'
+import { Hero } from './Hero'
 
 type Cargo = {
   length: number
@@ -23,56 +36,138 @@ type Cargo = {
 
 const NAV = [
   { label: 'About WAC', href: '#about' },
-  { label: 'Solutions', href: '#solutions' },
   { label: 'Instant Quote', href: '#quote' },
+  { label: 'Solutions', href: '#solutions' },
   { label: 'Network', href: '#network' },
   { label: 'Contact', href: '#contact' },
 ]
 
-const SOLUTIONS = [
+const WAC_SITE = 'http://www.waclogistics.com/'
+
+/** Air = Quote product; others = official WAC / Favvy (Road is NOT Desk) */
+const SOLUTIONS: {
+  id: string
+  title: string
+  desc: string
+  cover: string
+  href: string
+  cta: string
+  external: boolean
+  icon: LucideIcon
+}[] = [
   {
-    icon: Plane,
+    id: 'air',
     title: 'Air Freight',
-    desc: 'Time-critical Asia corridor uplift with airline allotments and real-time desk quoting.',
-    iconWrap: 'bg-orange-50 text-wac-orange',
+    desc: 'Asia corridor uplift — Instant Quote and origin cost desk on this site.',
+    cover: '/services/air.png',
     href: '#quote',
+    cta: 'Instant Quote',
+    external: false,
+    icon: Plane,
   },
   {
-    icon: Ship,
+    id: 'ocean',
     title: 'Ocean Freight',
-    desc: 'FCL & LCL programs across major Asian ports with reliable schedule integrity.',
-    iconWrap: 'bg-sky-50 text-sky-700',
-    href: 'http://www.waclogistics.com/',
+    desc: 'FCL & LCL programs at major Asian ports.',
+    cover: '/services/ocean.jpg',
+    href: WAC_SITE,
+    cta: 'View on WAC',
+    external: true,
+    icon: Ship,
   },
   {
-    icon: Truck,
+    id: 'road',
     title: 'Road Freight',
-    desc: 'Cross-border trucking and last-mile connectivity linked to air and ocean lanes.',
-    iconWrap: 'bg-emerald-50 text-emerald-700',
-    href: 'http://www.waclogistics.com/',
+    desc: 'Cross-border trucking and last-mile linked to air and ocean.',
+    cover: '/services/road.jpg',
+    href: WAC_SITE,
+    cta: 'View on WAC',
+    external: true,
+    icon: Truck,
   },
   {
-    icon: Warehouse,
+    id: 'warehouse',
     title: 'Warehousing',
-    desc: 'Bonded and non-bonded inventory control close to key gateway airports.',
-    iconWrap: 'bg-slate-100 text-wac-navy',
-    href: 'http://www.waclogistics.com/',
+    desc: 'Bonded and non-bonded inventory near gateway airports.',
+    cover: '/services/warehouse.jpg',
+    href: WAC_SITE,
+    cta: 'View on WAC',
+    external: true,
+    icon: Warehouse,
   },
   {
-    icon: ShoppingBag,
+    id: 'ecom',
     title: 'E-Commerce',
-    desc: 'Cross-border fulfillment built for speed, visibility, and scalable peak seasons.',
-    iconWrap: 'bg-rose-50 text-rose-600',
+    desc: 'Cross-border fulfillment via W Networks / Favvy.',
+    cover: '/services/ecom.jpg',
     href: 'https://www.favvyhk.com/',
+    cta: 'Visit Favvy',
+    external: true,
+    icon: ShoppingBag,
   },
-] as const
+]
+
+function Reveal({
+  children,
+  className = '',
+  delay = 0,
+}: {
+  children: ReactNode
+  className?: string
+  delay?: number
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          io.unobserve(el)
+        }
+      },
+      { threshold: 0.14, rootMargin: '0px 0px -6% 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={`reveal ${visible ? 'reveal-in' : ''} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  )
+}
 
 const NETWORK = [
-  { city: 'Korea', focus: 'Seoul · Incheon · Busan' },
-  { city: 'Hong Kong', focus: 'HKG Hub · Pearl River Delta' },
-  { city: 'China', focus: 'Shanghai · Shenzhen · Guangzhou' },
-  { city: 'Asia', focus: 'Singapore · Vietnam · ASEAN' },
-]
+  {
+    city: 'Korea',
+    focus: 'Seoul · Incheon · Busan',
+    blurb: 'Sales desk & gateway ops linked to HKG uplift.',
+  },
+  {
+    city: 'Hong Kong',
+    focus: 'HKG Hub · Pearl River Delta',
+    blurb: 'Origin local, cartage & airline allotment hub.',
+  },
+  {
+    city: 'China',
+    focus: 'Shanghai · Shenzhen · Guangzhou',
+    blurb: 'South & East China corridor coverage.',
+  },
+  {
+    city: 'Asia',
+    focus: 'Singapore · Vietnam · ASEAN',
+    blurb: 'Regional lanes beyond Greater China.',
+  },
+] as const
 
 /** From https://wexpresshk.com/home.html — W Networks */
 const W_NETWORKS = [
@@ -678,6 +773,23 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [toast, setToast] = useState('')
   const [formError, setFormError] = useState('')
+  /** public = shipper indicative · desk = internal cost with variable slots */
+  const [quoteMode, setQuoteMode] = useState<'public' | 'desk'>('public')
+  const [deskCarrier, setDeskCarrier] = useState('')
+  const [usdHkd, setUsdHkd] = useState(DEFAULT_USD_HKD)
+  const [deskFlags, setDeskFlags] = useState<DeskFlags>({
+    xray: false,
+    uld: false,
+    dg: false,
+    whReg: false,
+  })
+  const [slots, setSlots] = useState<VariableSlots>({
+    cartage: VARIABLE_SLOT_DEFAULTS.cartage,
+    tunnel: VARIABLE_SLOT_DEFAULTS.tunnel,
+    parking: VARIABLE_SLOT_DEFAULTS.parking,
+    other: VARIABLE_SLOT_DEFAULTS.other,
+    otherLabel: 'Other / Ad-hoc',
+  })
 
   const volWeight = (cargo.length * cargo.width * cargo.height) / 6000
   const cw = Math.max(Number(cargo.weight) || 0, volWeight || 0)
@@ -691,6 +803,23 @@ export default function App() {
       return { ...c, ratePerKg, base, surcharge, total }
     }).sort((a, b) => a.total - b.total)
   }, [cw])
+
+  const selectedDeskQuote = useMemo(() => {
+    if (!quotes.length) return null
+    return quotes.find((q) => q.code === deskCarrier) ?? quotes[0]
+  }, [quotes, deskCarrier])
+
+  const deskSheet = useMemo(() => {
+    if (!selectedDeskQuote) return null
+    return buildDeskCostSheet({
+      cw,
+      airUsd: selectedDeskQuote.total,
+      airLabel: `Air Freight (${selectedDeskQuote.code} ${selectedDeskQuote.name})`,
+      flags: deskFlags,
+      slots,
+      usdHkd,
+    })
+  }, [cw, selectedDeskQuote, deskFlags, slots, usdHkd])
 
   const quoteValidUntil = useMemo(() => formatValidUntil(7), [showResult])
 
@@ -788,9 +917,57 @@ export default function App() {
       `[Quote Request] ${origin}-${destination} / ${carrier.code} / ${cw.toFixed(1)}KGS`,
     )
     const body = encodeURIComponent(
-      `Hello WAC Logistics,\n\nI would like an official quote for the below shipment.\n\nLane: ${origin} → ${destination}\nDims: ${cargo.length} x ${cargo.width} x ${cargo.height} cm\nGross: ${Number(cargo.weight).toFixed(1)} KGS\nC.W.: ${cw.toFixed(1)} KGS\nPreferred carrier: ${carrier.code} (${carrier.name})\nIndicative total (web): USD ${carrier.total.toFixed(2)}\n\nPlease confirm allotment, final rate and transit.\n\nThank you.`,
+      `Hello WAC Logistics,\n\nI would like an official quote for the below shipment.\n\nLane: ${origin} → ${destination}\nDims: ${cargo.length} x ${cargo.width} x ${cargo.height} cm\nGross: ${Number(cargo.weight).toFixed(1)} KGS\nC.W.: ${cw.toFixed(1)} KGS\nPreferred carrier: ${carrier.code} (${carrier.name})\nIndicative air total (web): USD ${carrier.total.toFixed(2)}\n\nPlease confirm allotment, final rate, origin local & trucking, and transit.\n\nThank you.`,
     )
     window.location.href = `mailto:service@waclogistics.com?subject=${subject}&body=${body}`
+  }
+
+  const handleCopyDeskSheet = async () => {
+    if (!deskSheet || !selectedDeskQuote) return
+    const lines = deskSheet.lines
+      .map(
+        (l) =>
+          `${l.label}\t${l.currency} ${l.amount.toFixed(2)}${l.note ? `\t(${l.note})` : ''}`,
+      )
+      .join('\n')
+    const plain = `WAC Freight Desk — Formal Origin Cost
+Lane: ${origin} → ${destination}
+Dims: ${cargo.length}x${cargo.width}x${cargo.height} cm · Gross ${Number(cargo.weight).toFixed(1)} · C.W. ${cw.toFixed(1)} KGS
+Carrier: ${selectedDeskQuote.code} ${selectedDeskQuote.name}
+Master validity: ${MASTER_VALIDITY.effective} → ${MASTER_VALIDITY.expiry}
+FX USD/HKD: ${usdHkd}
+
+${lines}
+
+Air (HKD): ${deskSheet.airHkd.toFixed(2)}
+Local master (HKD): ${deskSheet.localHkd.toFixed(2)}
+Variable slots (HKD): ${deskSheet.variableHkd.toFixed(2)}
+TOTAL: HKD ${deskSheet.totalHkd.toFixed(2)}  /  USD ${deskSheet.totalUsd.toFixed(2)}
+
+* Variable slots (Cartage / Tunnel / Parking) entered per shipment.
+* Local lines from cost item_origin EXP master (auto max(min, flat×cw)).
+`
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(plain)
+      } else {
+        await copyRichEmail(plain, plain)
+      }
+      setCopied('desk')
+      setToast('Desk cost sheet copied')
+      window.setTimeout(() => {
+        setCopied('')
+        setToast('')
+      }, 2200)
+    } catch {
+      setToast('클립보드 복사에 실패했습니다.')
+      window.setTimeout(() => setToast(''), 2200)
+    }
+  }
+
+  const openDesk = () => {
+    setQuoteMode('desk')
+    if (!showResult) handleCalculate()
   }
 
   return (
@@ -806,140 +983,204 @@ export default function App() {
               <a
                 key={item.label}
                 href={item.href}
+                onClick={(e) => {
+                  if (item.href === '#desk') {
+                    e.preventDefault()
+                    openDesk()
+                    document.getElementById('quote')?.scrollIntoView({
+                      behavior: 'smooth',
+                    })
+                  }
+                }}
                 className="transition hover:text-wac-orange"
               >
                 {item.label}
               </a>
             ))}
           </nav>
-          <a
-            href="#quote"
-            className="inline-flex items-center gap-1 rounded bg-wac-orange px-3.5 py-2 text-[12px] font-bold text-white transition hover:bg-[#d9441c]"
-          >
-            Get Quote
-            <ChevronRight className="h-3.5 w-3.5" />
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                openDesk()
+                document.getElementById('quote')?.scrollIntoView({
+                  behavior: 'smooth',
+                })
+              }}
+              className="hidden items-center gap-1 rounded border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold text-wac-navy transition hover:border-wac-orange hover:text-wac-orange sm:inline-flex"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              Desk
+            </button>
+            <a
+              href="#quote"
+              onClick={() => setQuoteMode('public')}
+              className="inline-flex items-center gap-1 rounded bg-wac-orange px-3.5 py-2 text-[12px] font-bold text-white transition hover:bg-[#d9441c]"
+            >
+              Get Quote
+              <ChevronRight className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
       </header>
 
-      {/* HERO — full-bleed cargo freighter */}
-      <section
-        id="top"
-        className="relative h-[92vh] min-h-[600px] max-h-[900px] overflow-hidden bg-wac-navy"
-      >
-        <div className="absolute inset-0">
-          <img
-            src="/hero-cargo-takeoff.png"
-            alt="WAC cargo freighter takeoff"
-            className="hero-pan h-full w-full object-cover object-[center_35%]"
-          />
-          {/* Keep plane visible: lighter overlay on right, readable copy on left */}
-          <div className="absolute inset-0 bg-gradient-to-r from-wac-navy/92 via-wac-navy/55 to-wac-navy/15" />
-          <div className="absolute inset-0 bg-gradient-to-t from-wac-navy/75 via-transparent to-wac-navy/25" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#F05023]/20 to-transparent" />
-        </div>
+      <Hero />
 
-        <div className="relative z-10 mx-auto flex h-full max-w-[1200px] flex-col justify-center px-6 lg:px-8">
-          <p className="fade-up mb-4 text-[12px] font-bold tracking-[0.28em] text-wac-orange uppercase">
-            Delivering Asia, Delivering Trust
-          </p>
-          <h1 className="fade-up-d1 font-display max-w-3xl text-4xl leading-[1.1] font-extrabold text-white drop-shadow-sm sm:text-5xl lg:text-[56px]">
-            What WAC delivers
-            <br />
-            is trust and value.
-          </h1>
-          <p className="fade-up-d2 mt-5 max-w-xl text-[16px] leading-relaxed text-white/80">
-            We build trust to deliver value to customers throughout Asia —
-            with a Digital Freight Desk that quotes air rates in seconds.
-          </p>
-          <div className="fade-up-d2 mt-8 flex flex-wrap gap-3">
-            <a
-              href="#quote"
-              className="inline-flex items-center gap-2 rounded bg-wac-orange px-5 py-3 text-[13px] font-bold text-white shadow-lg shadow-[#F05023]/30 transition hover:bg-[#d9441c]"
-            >
-              Instant Air Quote
-              <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href="#solutions"
-              className="inline-flex items-center gap-2 rounded border border-white/35 bg-white/5 px-5 py-3 text-[13px] font-semibold text-white backdrop-blur-sm transition hover:border-white hover:bg-white/10"
-            >
-              Explore Solutions
-            </a>
-          </div>
-        </div>
-      </section>
+      {/* SOLUTIONS — light Pantos/WAC style: 3+2, split cards, ghost CTAs */}
+      <section id="solutions" className="border-t border-slate-200 bg-[#F4F7F9] py-20 sm:py-24">
+        <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
+          <Reveal>
+            <div className="mb-12 max-w-2xl">
+              <p className="mb-3 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
+                Solutions
+              </p>
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-wac-navy sm:text-4xl">
+                End-to-end freight across Asia
+              </h2>
+              <p className="mt-3 text-[15px] leading-relaxed text-slate-500">
+                Air opens Instant Quote on this site. Ocean, Road, Warehouse and
+                E-Commerce go to the official WAC / partner pages.
+              </p>
+            </div>
+          </Reveal>
 
-      {/* SOLUTIONS — enterprise SaaS cards */}
-      <section
-        id="solutions"
-        className="border-t border-slate-200 bg-slate-50 py-20 sm:py-24"
-      >
-        <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
-          <div className="mb-12 max-w-3xl">
-            <p className="mb-3 text-xs font-bold tracking-[0.2em] text-wac-orange uppercase">
-              Solutions
-            </p>
-            <h2 className="font-display mb-4 text-3xl font-black tracking-tight text-wac-navy sm:text-4xl">
-              End-to-end freight across Asia
-            </h2>
-            <p className="text-[16px] leading-relaxed text-slate-500 sm:text-lg">
-              Air, ocean, road, warehousing and e-commerce — one network, one
-              operating standard, one trusted partner.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
-            {SOLUTIONS.map((item) => (
-              <a
-                key={item.title}
-                href={item.href}
-                {...(item.href.startsWith('http')
-                  ? { target: '_blank', rel: 'noreferrer' }
-                  : {})}
-                className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-wac-orange hover:shadow-xl hover:shadow-[#F05023]/10 sm:p-7"
-              >
-                <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-transparent to-transparent transition-all duration-300 group-hover:from-wac-orange group-hover:to-orange-400" />
-
-                <div
-                  className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:bg-wac-orange group-hover:text-white sm:mb-6 sm:h-14 sm:w-14 ${item.iconWrap}`}
+          {/* Row 1: 3 cards */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {SOLUTIONS.slice(0, 3).map((item, i) => (
+              <Reveal key={item.id} delay={i * 70}>
+                <a
+                  href={item.href}
+                  {...(item.external
+                    ? { target: '_blank', rel: 'noreferrer' }
+                    : {})}
+                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_30px_-18px_rgba(26,42,58,0.25)] transition duration-300 hover:-translate-y-1 hover:border-wac-orange/35 hover:shadow-[0_20px_50px_-24px_rgba(240,80,35,0.35)]"
                 >
-                  <item.icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.75} />
-                </div>
-
-                <h3 className="mb-2 text-lg font-bold text-wac-navy transition-colors group-hover:text-wac-orange sm:mb-3 sm:text-xl">
-                  {item.title}
-                </h3>
-                <p className="flex-grow text-[13px] leading-relaxed text-slate-500 sm:text-sm">
-                  {item.desc}
-                </p>
-
-                <div className="mt-6 flex items-center text-sm font-bold text-wac-orange opacity-0 transition-all duration-300 -translate-x-3 group-hover:translate-x-0 group-hover:opacity-100 sm:mt-8">
-                  Learn more
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </div>
-              </a>
+                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+                    <img
+                      src={item.cover}
+                      alt=""
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                    />
+                    <div className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white shadow-sm backdrop-blur-md">
+                      <item.icon className="h-5 w-5" strokeWidth={1.75} />
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col p-5 sm:p-6">
+                    <h3 className="font-display text-lg font-extrabold text-wac-navy">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 flex-1 text-[13px] leading-relaxed text-slate-500">
+                      {item.desc}
+                    </p>
+                    <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-[12px] font-bold text-wac-navy transition group-hover:border-wac-orange/40 group-hover:bg-orange-50 group-hover:text-wac-orange">
+                      {item.cta}
+                      {item.external ? (
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      )}
+                    </span>
+                  </div>
+                </a>
+              </Reveal>
             ))}
           </div>
+
+          {/* Row 2: 2 cards centered */}
+          <div className="mt-5 flex justify-center">
+            <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 lg:w-[66.666%]">
+              {SOLUTIONS.slice(3).map((item, i) => (
+                <Reveal key={item.id} delay={200 + i * 70}>
+                  <a
+                    href={item.href}
+                    {...(item.external
+                      ? { target: '_blank', rel: 'noreferrer' }
+                      : {})}
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_30px_-18px_rgba(26,42,58,0.25)] transition duration-300 hover:-translate-y-1 hover:border-wac-orange/35 hover:shadow-[0_20px_50px_-24px_rgba(240,80,35,0.35)]"
+                  >
+                    <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+                      <img
+                        src={item.cover}
+                        alt=""
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                      />
+                      <div className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white shadow-sm backdrop-blur-md">
+                        <item.icon className="h-5 w-5" strokeWidth={1.75} />
+                      </div>
+                    </div>
+                    <div className="flex flex-1 flex-col p-5 sm:p-6">
+                      <h3 className="font-display text-lg font-extrabold text-wac-navy">
+                        {item.title}
+                      </h3>
+                      <p className="mt-2 flex-1 text-[13px] leading-relaxed text-slate-500">
+                        {item.desc}
+                      </p>
+                      <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-[12px] font-bold text-wac-navy transition group-hover:border-wac-orange/40 group-hover:bg-orange-50 group-hover:text-wac-orange">
+                        {item.cta}
+                        {item.external ? (
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        )}
+                      </span>
+                    </div>
+                  </a>
+                </Reveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* INSTANT QUOTE */}
-      <section id="quote" className="bg-[#F4F7F9] py-20">
-        <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
-          <div className="mb-10">
-            <p className="mb-2 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
-              Digital Freight Desk
-            </p>
-            <h2 className="font-display text-3xl font-extrabold text-wac-navy sm:text-4xl">
-              Instant Air Freight Quote
-            </h2>
-            <p className="mt-2 max-w-xl text-[15px] text-slate-500">
-              Editable lane · Chargeable weight engine · WAC major carriers
-              (CX / KE / OZ / RH / LD / CZ / MU / SQ / EK / QR / LH / CV)
-            </p>
+      {/* INSTANT QUOTE — same light family as Solutions */}
+      <section id="quote" className="border-t border-slate-200 bg-white py-20 sm:py-24">
+        <div id="desk" className="mx-auto max-w-[1280px] px-6 lg:px-10">
+          <Reveal>
+          <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="mb-2 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
+                Core product
+              </p>
+              <h2 className="font-display text-3xl font-extrabold text-wac-navy sm:text-4xl lg:text-[42px]">
+                {quoteMode === 'public'
+                  ? 'Instant Air Freight Quote'
+                  : 'Origin Cost Desk'}
+              </h2>
+              <p className="mt-3 text-[15px] leading-relaxed text-slate-600">
+                {quoteMode === 'public'
+                  ? 'Shipper / nominee — lane, chargeable weight, indicative air rates. Formal local & trucking confirmed on Desk.'
+                  : 'Internal desk — local master auto-calc + Cartage / Tunnel / Parking slots for formal origin cost.'}
+              </p>
+            </div>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setQuoteMode('public')}
+                className={`rounded-md px-4 py-2 text-[12px] font-bold transition ${
+                  quoteMode === 'public'
+                    ? 'bg-wac-navy text-white'
+                    : 'text-slate-500 hover:text-wac-navy'
+                }`}
+              >
+                Public Quote
+              </button>
+              <button
+                type="button"
+                onClick={() => openDesk()}
+                className={`inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-[12px] font-bold transition ${
+                  quoteMode === 'desk'
+                    ? 'bg-wac-orange text-white'
+                    : 'text-slate-500 hover:text-wac-navy'
+                }`}
+              >
+                <Lock className="h-3.5 w-3.5" />
+                WAC Desk
+              </button>
+            </div>
           </div>
+          </Reveal>
 
+          <Reveal delay={120}>
           <div className="grid grid-cols-12 gap-6">
             <div className="col-span-12 lg:col-span-4">
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1024,6 +1265,116 @@ export default function App() {
                     </div>
                   </div>
 
+                  {quoteMode === 'desk' && (
+                    <div className="space-y-4 rounded-lg border border-orange-100 bg-orange-50/60 p-4">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="h-4 w-4 text-wac-orange" />
+                        <p className="text-[11px] font-bold tracking-wider text-wac-orange uppercase">
+                          Variable slots (HKD)
+                        </p>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-500">
+                        Enter only what changes per job — Cartage / Tunnel /
+                        Parking. Local master lines auto-calc from C.W.
+                      </p>
+                      {(
+                        [
+                          ['cartage', 'Cartage / Trucking'],
+                          ['tunnel', 'Tunnel Fee'],
+                          ['parking', 'Parking Fee'],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <div key={key}>
+                          <label className="mb-1 block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                            {label}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={slots[key]}
+                            onChange={(e) =>
+                              setSlots({
+                                ...slots,
+                                [key]: Number(e.target.value),
+                              })
+                            }
+                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-wac-orange focus:ring-1 focus:ring-wac-orange"
+                          />
+                        </div>
+                      ))}
+                      <div>
+                        <label className="mb-1 block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                          Other label
+                        </label>
+                        <input
+                          type="text"
+                          value={slots.otherLabel}
+                          onChange={(e) =>
+                            setSlots({ ...slots, otherLabel: e.target.value })
+                          }
+                          className="mb-2 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-wac-orange"
+                        />
+                        <label className="mb-1 block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                          Other amount (HKD)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={slots.other}
+                          onChange={(e) =>
+                            setSlots({
+                              ...slots,
+                              other: Number(e.target.value),
+                            })
+                          }
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-wac-orange"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                          FX USD → HKD
+                        </label>
+                        <input
+                          type="number"
+                          min={0.1}
+                          step={0.0001}
+                          value={usdHkd}
+                          onChange={(e) => setUsdHkd(Number(e.target.value))}
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-wac-orange"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-3 pt-1">
+                        {(
+                          [
+                            ['xray', 'X-ray'],
+                            ['uld', 'ULD'],
+                            ['dg', 'DG'],
+                            ['whReg', 'WH Reg'],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <label
+                            key={key}
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-slate-600"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={deskFlags[key]}
+                              onChange={(e) =>
+                                setDeskFlags({
+                                  ...deskFlags,
+                                  [key]: e.target.checked,
+                                })
+                              }
+                              className="rounded border-slate-300 text-wac-orange focus:ring-wac-orange"
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {formError && (
                     <p className="rounded border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-600">
                       {formError}
@@ -1043,7 +1394,9 @@ export default function App() {
                       </>
                     ) : (
                       <>
-                        Calculate Quote
+                        {quoteMode === 'desk'
+                          ? 'Calculate Formal Cost'
+                          : 'Calculate Quote'}
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
@@ -1057,11 +1410,14 @@ export default function App() {
                 <div className="flex h-full min-h-[420px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-12 shadow-sm">
                   <Loader2 className="spinner mb-4 h-10 w-10 text-wac-orange" />
                   <h4 className="mb-1 text-lg font-bold text-slate-700">
-                    Fetching live rates from carriers...
+                    {quoteMode === 'desk'
+                      ? 'Building origin cost sheet...'
+                      : 'Fetching live rates from carriers...'}
                   </h4>
                   <p className="max-w-sm text-center text-sm text-slate-500">
-                    Querying WAC major airlines for {origin} → {destination}
-                    (mock rates until CargoAI / rate DB).
+                    {quoteMode === 'desk'
+                      ? 'Air + EXP local master + variable truck slots'
+                      : `Querying WAC major airlines for ${origin} → ${destination} (mock rates until CargoAI / rate DB).`}
                   </p>
                 </div>
               ) : !showResult ? (
@@ -1076,6 +1432,141 @@ export default function App() {
                     Enter origin, destination, dimensions and weight to compare
                     12 WAC major carriers instantly.
                   </p>
+                </div>
+              ) : quoteMode === 'desk' && deskSheet && selectedDeskQuote ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="mb-1 text-[11px] font-bold tracking-wider text-wac-orange">
+                          FORMAL ORIGIN COST
+                        </p>
+                        <p className="font-display text-2xl font-black text-wac-navy">
+                          HKD {deskSheet.totalHkd.toFixed(2)}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          ≈ USD {deskSheet.totalUsd.toFixed(2)} · C.W.{' '}
+                          {cw.toFixed(1)} KGS · {origin} → {destination}
+                        </p>
+                      </div>
+                      <div className="text-right text-[11px] text-slate-500">
+                        <p>
+                          Master {MASTER_VALIDITY.effective} →{' '}
+                          {MASTER_VALIDITY.expiry}
+                        </p>
+                        <p className="mt-1">FX {usdHkd.toFixed(4)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-3">
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">
+                          Air
+                        </p>
+                        <p className="text-sm font-bold text-wac-navy">
+                          HKD {deskSheet.airHkd.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">
+                          Local master
+                        </p>
+                        <p className="text-sm font-bold text-wac-navy">
+                          HKD {deskSheet.localHkd.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-white/80 px-3 py-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">
+                          Variable slots
+                        </p>
+                        <p className="text-sm font-bold text-wac-orange">
+                          HKD {deskSheet.variableHkd.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <label className="mb-1.5 block text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                          Air carrier (for this sheet)
+                        </label>
+                        <select
+                          value={selectedDeskQuote.code}
+                          onChange={(e) => setDeskCarrier(e.target.value)}
+                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-wac-navy outline-none focus:border-wac-orange"
+                        >
+                          {quotes.map((q) => (
+                            <option key={q.code} value={q.code}>
+                              {q.code} — {q.name} · USD {q.total.toFixed(2)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyDeskSheet}
+                        className="inline-flex items-center gap-2 rounded-lg border-2 border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:border-wac-orange hover:text-wac-orange"
+                      >
+                        {copied === 'desk' ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                        {copied === 'desk' ? 'Copied!' : 'Copy Cost Sheet'}
+                      </button>
+                    </div>
+
+                    <div className="overflow-hidden rounded-lg border border-slate-100">
+                      <table className="w-full text-left text-[13px]">
+                        <thead>
+                          <tr className="bg-slate-50 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                            <th className="px-3 py-2.5">Charge</th>
+                            <th className="px-3 py-2.5">Group</th>
+                            <th className="px-3 py-2.5 text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {deskSheet.lines.map((l) => (
+                            <tr
+                              key={l.id}
+                              className="border-t border-slate-100"
+                            >
+                              <td className="px-3 py-2.5 font-semibold text-wac-navy">
+                                {l.label}
+                                {l.note && (
+                                  <span className="mt-0.5 block text-[10px] font-medium text-slate-400">
+                                    {l.note}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <span
+                                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                                    l.group === 'variable'
+                                      ? 'bg-orange-50 text-wac-orange'
+                                      : l.group === 'air'
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'bg-slate-100 text-slate-600'
+                                  }`}
+                                >
+                                  {l.group}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-bold text-slate-800">
+                                {l.currency} {l.amount.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-3 text-[10px] text-slate-400">
+                      * Desk mode for WAC staff. Public shippers only see
+                      indicative air rates — they do not enter Cartage / Tunnel /
+                      Parking.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1174,7 +1665,7 @@ export default function App() {
                           </div>
                           <div className="min-w-[150px] text-right">
                             <p className="mb-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                              Estimated Total
+                              Indicative Air
                             </p>
                             <p
                               className={`font-display text-2xl font-black ${
@@ -1240,6 +1731,18 @@ export default function App() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => {
+                                setDeskCarrier(q.code)
+                                openDesk()
+                              }}
+                              className="flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3.5 py-2 text-xs font-bold text-wac-orange transition hover:bg-orange-100"
+                              title="Open desk cost sheet with this carrier"
+                            >
+                              <Lock className="h-3.5 w-3.5" />
+                              Open in Desk
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleCopyEmailDraft(q)}
                               className="flex items-center gap-2 rounded-lg border-2 border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:border-wac-orange hover:text-wac-orange"
                               title="WAC desk: copy table-format email draft"
@@ -1256,9 +1759,9 @@ export default function App() {
                           </div>
                         </div>
                         <p className="mt-2.5 text-[10px] text-slate-400">
-                          * Indicative web rate. Shippers: use Request Quote.
-                          WAC desk: Copy Email Draft pastes table format like
-                          Outlook quotes.
+                          * Indicative air only — excludes HK cartage / tunnel /
+                          parking. Shippers: Request Quote. Desk: Open in Desk
+                          for formal origin cost.
                         </p>
                       </div>
                     ))}
@@ -1267,115 +1770,162 @@ export default function App() {
               )}
             </div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* NETWORK & OFFICES */}
-      <section id="network" className="border-y border-slate-100 bg-white py-20">
-        <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
-          <p className="mb-2 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
-            Network & Offices
-          </p>
-          <h2 className="font-display mb-3 text-3xl font-extrabold text-wac-navy sm:text-4xl">
-            Asia coverage that moves with you
-          </h2>
-          <p className="mb-12 max-w-2xl text-[15px] text-slate-500">
-            Local desks, shared operating cadence, and gateway strength across
-            Korea, Hong Kong, China and the wider Asian corridor.
-          </p>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {NETWORK.map((n) => (
-              <div
-                key={n.city}
-                className="border-l-2 border-wac-orange bg-wac-slate px-5 py-6"
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-wac-orange" />
-                  <h3 className="text-[16px] font-bold text-wac-navy">
-                    {n.city}
-                  </h3>
-                </div>
-                <p className="text-[13px] text-slate-500">{n.focus}</p>
+      <section id="network" className="bg-white py-20 sm:py-28">
+        <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
+            <Reveal className="lg:col-span-5">
+              <p className="mb-3 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
+                Network & Offices
+              </p>
+              <h2 className="font-display mb-4 text-3xl font-extrabold tracking-tight text-wac-navy sm:text-4xl lg:text-[42px]">
+                Asia coverage that
+                <br />
+                moves with you
+              </h2>
+              <p className="mb-10 max-w-md text-[15px] leading-relaxed text-slate-500">
+                Local desks across Korea, Hong Kong, China and ASEAN — one
+                operating cadence from origin cartage to airline uplift.
+              </p>
+              <div className="space-y-2">
+                {NETWORK.map((n, i) => (
+                  <Reveal key={n.city} delay={i * 50}>
+                    <div className="flex gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 transition hover:border-wac-orange/30 hover:bg-white hover:shadow-[0_12px_40px_-24px_rgba(26,42,58,0.35)]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wac-navy text-wac-orange">
+                        <MapPin className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-[15px] font-bold text-wac-navy">
+                          {n.city}
+                        </p>
+                        <p className="text-[12px] font-semibold text-slate-600">
+                          {n.focus}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          {n.blurb}
+                        </p>
+                      </div>
+                    </div>
+                  </Reveal>
+                ))}
               </div>
-            ))}
+            </Reveal>
+
+            <Reveal className="lg:col-span-7" delay={100}>
+              <div className="relative overflow-hidden rounded-[1.25rem] shadow-[0_32px_80px_-28px_rgba(26,42,58,0.55)]">
+                <img
+                  src="/network-hub.jpg"
+                  alt="WAC Asia cargo gateway"
+                  className="aspect-[16/11] h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-wac-navy/80 via-wac-navy/10 to-transparent" />
+                <div className="absolute right-0 bottom-0 left-0 p-6 sm:p-8">
+                  <p className="text-[11px] font-bold tracking-[0.2em] text-wac-orange uppercase">
+                    Gateway strength
+                  </p>
+                  <p className="mt-2 max-w-md text-[17px] font-semibold text-white sm:text-lg">
+                    HKG hub linked to Korea, China and ASEAN corridors.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
       {/* ABOUT */}
-      <section id="about" className="relative overflow-hidden bg-wac-navy py-24">
-        <div className="absolute inset-0 opacity-30">
+      <section id="about" className="relative overflow-hidden bg-wac-navy py-28 sm:py-32">
+        <div className="absolute inset-0">
           <img
             src="/hero-cargo-takeoff.png"
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-[center_40%] opacity-35"
           />
-          <div className="absolute inset-0 bg-wac-navy/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-wac-navy via-wac-navy/80 to-wac-navy/50" />
         </div>
         <div className="relative z-10 mx-auto max-w-[1200px] px-6 lg:px-8">
-          <p className="mb-4 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
-            About WAC
-          </p>
-          <h2 className="font-display max-w-3xl text-3xl leading-tight font-extrabold text-white sm:text-4xl">
-            Building trust to deliver value
-            <br />
-            throughout Asia — and beyond.
-          </h2>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/70">
-            WAC Int&apos;l Logistics connects shippers, airlines and destination
-            partners with disciplined execution. Instant Quote digitizes the
-            desk workflow that used to live in spreadsheets and email threads.
-          </p>
-          <a
-            href="http://www.waclogistics.com/"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-8 inline-flex items-center gap-2 text-[13px] font-bold text-white transition hover:text-wac-orange"
-          >
-            Visit waclogistics.com
-            <ArrowRight className="h-4 w-4" />
-          </a>
+          <Reveal>
+            <p className="mb-4 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
+              About WAC
+            </p>
+            <h2 className="font-display max-w-3xl text-3xl leading-tight font-extrabold text-white sm:text-4xl lg:text-[44px]">
+              Building trust to deliver value
+              <br />
+              throughout Asia — and beyond.
+            </h2>
+            <p className="mt-6 max-w-2xl text-[16px] leading-relaxed text-white/70">
+              WAC Int&apos;l Logistics connects shippers, airlines and destination
+              partners across Asia. This portfolio site wraps Instant Quote and
+              Freight Desk in the same brand language as waclogistics.com.
+            </p>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <a
+                href={WAC_SITE}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded bg-white px-5 py-3 text-[13px] font-bold text-wac-navy transition hover:bg-orange-50"
+              >
+                Visit waclogistics.com
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              <a
+                href="#quote"
+                className="inline-flex items-center gap-2 rounded border border-white/40 px-5 py-3 text-[13px] font-bold text-white transition hover:bg-white/10"
+              >
+                Try Instant Quote
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* W NETWORKS — only addition */}
-      <section id="w-networks" className="border-t border-slate-200 bg-white py-16">
+      {/* W NETWORKS */}
+      <section id="w-networks" className="border-t border-slate-200 bg-[#F7F9FB] py-16 sm:py-20">
         <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-2xl font-black tracking-wider text-wac-navy">
-              W NETWORKS
-            </h2>
-            <div className="flex items-center justify-center gap-3">
-              <div className="h-px w-16 bg-slate-300" />
-              <Truck className="h-5 w-5 text-wac-orange" />
-              <div className="h-px w-16 bg-slate-300" />
+          <Reveal>
+            <div className="mb-10 text-center">
+              <p className="mb-2 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
+                Family sites
+              </p>
+              <h2 className="font-display text-2xl font-extrabold tracking-wide text-wac-navy sm:text-3xl">
+                W NETWORKS
+              </h2>
+              <p className="mx-auto mt-3 max-w-lg text-[14px] text-slate-500">
+                Sister brands in the W ecosystem — separate from freight Solutions
+                above.
+              </p>
             </div>
-          </div>
+          </Reveal>
 
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-5">
-            {W_NETWORKS.map((net) => (
-              <a
-                key={net.name}
-                href={net.url}
-                target="_blank"
-                rel="noreferrer"
-                className="group flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1"
-              >
-                <div className="mb-4 flex h-28 w-full items-center justify-center overflow-hidden rounded-t-sm border-b-4 border-wac-navy bg-[#F4F7F9] transition-colors group-hover:border-wac-orange">
-                  <img
-                    src={net.logo}
-                    alt={net.name}
-                    className="h-full w-full object-contain p-3"
-                  />
-                </div>
-                <h4 className="mb-1 text-sm font-bold text-wac-navy transition-colors group-hover:text-wac-orange">
-                  {net.name}
-                </h4>
-                <p className="text-[10px] font-bold tracking-wide text-slate-400">
-                  {net.desc}
-                </p>
-              </a>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-5">
+            {W_NETWORKS.map((net, i) => (
+              <Reveal key={net.name} delay={i * 50}>
+                <a
+                  href={net.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex flex-col items-center rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm transition hover:-translate-y-1 hover:border-wac-orange/40 hover:shadow-lg"
+                >
+                  <div className="mb-4 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-50">
+                    <img
+                      src={net.logo}
+                      alt={net.name}
+                      className="h-full w-full object-contain p-3"
+                    />
+                  </div>
+                  <h4 className="text-[12px] font-bold text-wac-navy transition-colors group-hover:text-wac-orange sm:text-[13px]">
+                    {net.name}
+                  </h4>
+                  <p className="mt-1 text-[10px] font-bold tracking-wide text-slate-400">
+                    {net.desc}
+                  </p>
+                </a>
+              </Reveal>
             ))}
           </div>
         </div>
