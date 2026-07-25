@@ -11,11 +11,6 @@ import {
   Calculator,
   Lock,
   ExternalLink,
-  Ship,
-  Truck,
-  Warehouse,
-  ShoppingBag,
-  type LucideIcon,
 } from 'lucide-react'
 import {
   VARIABLE_SLOT_DEFAULTS,
@@ -44,17 +39,8 @@ const NAV = [
 
 const WAC_SITE = 'http://www.waclogistics.com/'
 
-/** Air = Quote product; others = official WAC / Favvy (Road is NOT Desk) */
-const SOLUTIONS: {
-  id: string
-  title: string
-  desc: string
-  cover: string
-  href: string
-  cta: string
-  external: boolean
-  icon: LucideIcon
-}[] = [
+/** Air = Quote product; others = official WAC / Favvy */
+const SOLUTIONS = [
   {
     id: 'air',
     title: 'Air Freight',
@@ -63,7 +49,6 @@ const SOLUTIONS: {
     href: '#quote',
     cta: 'Instant Quote',
     external: false,
-    icon: Plane,
   },
   {
     id: 'ocean',
@@ -73,7 +58,6 @@ const SOLUTIONS: {
     href: WAC_SITE,
     cta: 'View on WAC',
     external: true,
-    icon: Ship,
   },
   {
     id: 'road',
@@ -83,7 +67,6 @@ const SOLUTIONS: {
     href: WAC_SITE,
     cta: 'View on WAC',
     external: true,
-    icon: Truck,
   },
   {
     id: 'warehouse',
@@ -93,7 +76,6 @@ const SOLUTIONS: {
     href: WAC_SITE,
     cta: 'View on WAC',
     external: true,
-    icon: Warehouse,
   },
   {
     id: 'ecom',
@@ -103,9 +85,8 @@ const SOLUTIONS: {
     href: 'https://www.favvyhk.com/',
     cta: 'Visit Favvy',
     external: true,
-    icon: ShoppingBag,
   },
-]
+] as const
 
 function Reveal({
   children,
@@ -1061,9 +1042,6 @@ TOTAL: HKD ${deskSheet.totalHkd.toFixed(2)}  /  USD ${deskSheet.totalUsd.toFixed
                       alt=""
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
                     />
-                    <div className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white shadow-sm backdrop-blur-md">
-                      <item.icon className="h-5 w-5" strokeWidth={1.75} />
-                    </div>
                   </div>
                   <div className="flex flex-1 flex-col p-5 sm:p-6">
                     <h3 className="font-display text-lg font-extrabold text-wac-navy">
@@ -1104,9 +1082,6 @@ TOTAL: HKD ${deskSheet.totalHkd.toFixed(2)}  /  USD ${deskSheet.totalUsd.toFixed
                         alt=""
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
                       />
-                      <div className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white shadow-sm backdrop-blur-md">
-                        <item.icon className="h-5 w-5" strokeWidth={1.75} />
-                      </div>
                     </div>
                     <div className="flex flex-1 flex-col p-5 sm:p-6">
                       <h3 className="font-display text-lg font-extrabold text-wac-navy">
