@@ -1,10 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="WAC">
-  <rect width="64" height="64" rx="12" fill="#1A2A3A"/>
-  <!-- Simplified WAC diagonal mark -->
-  <g transform="rotate(-32 32 32)">
-    <rect x="14" y="16" width="7.5" height="32" rx="1.5" fill="#F5F7FA"/>
-    <rect x="24.5" y="16" width="7.5" height="32" rx="1.5" fill="#F5F7FA"/>
-    <rect x="35" y="16" width="7.5" height="32" rx="1.5" fill="#F05023"/>
-    <path fill="#F5F7FA" d="M45.5 16h7.5c.8 0 1.5.7 1.5 1.5V46c0 .8-.7 1.5-1.5 1.5H48V41h3.5V19H45.5V16z"/>
+  <rect width="64" height="64" rx="10" fill="#FFFFFF"/>
+  <!-- WC mark aligned to official wac-logo.png -->
+  <g transform="translate(7,12)">
+    <path d="M1 38 L11 2 L17.2 2 L7.2 38 Z" fill="#1A2A3A"/>
+    <path d="M13.5 38 L23.5 2 L29.7 2 L19.7 38 Z" fill="#1A2A3A"/>
+    <path d="M26 38 L36 2 L42.2 2 L32.2 38 Z" fill="#1A2A3A"/>
+    <path d="M1 38 L3.4 28.5 L9.4 28.5 L7.2 38 Z" fill="#F05023"/>
+    <path d="M26 38 L28.4 28.5 L34.4 28.5 L32.2 38 Z" fill="#F05023"/>
+    <path
+      d="M48 8 A15.5 15.5 0 1 0 48 32"
+      fill="none"
+      stroke="#F05023"
+      stroke-width="7.5"
+      stroke-linecap="butt"
+    />
   </g>
 </svg>
