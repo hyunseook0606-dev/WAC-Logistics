@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Copy,
   CheckCircle2,
-  MapPin,
   ChevronRight,
   Loader2,
   Calculator,
@@ -132,22 +131,18 @@ const NETWORK = [
   {
     city: 'Korea',
     focus: 'Seoul · Incheon · Busan',
-    blurb: 'Sales desk & gateway ops linked to HKG uplift.',
   },
   {
     city: 'Hong Kong',
     focus: 'HKG Hub · Pearl River Delta',
-    blurb: 'Origin local, cartage & airline allotment hub.',
   },
   {
     city: 'China',
     focus: 'Shanghai · Shenzhen · Guangzhou',
-    blurb: 'South & East China corridor coverage.',
   },
   {
     city: 'Asia',
     focus: 'Singapore · Vietnam · ASEAN',
-    blurb: 'Regional lanes beyond Greater China.',
   },
 ] as const
 
@@ -1904,8 +1899,8 @@ export default function App() {
       {/* NETWORK & OFFICES */}
       <section id="network" className="bg-white py-20 sm:py-28">
         <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
-          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
-            <Reveal className="lg:col-span-5">
+          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+            <Reveal className="lg:col-span-4">
               <p className="mb-3 text-[11px] font-bold tracking-[0.22em] text-wac-orange uppercase">
                 Network & Offices
               </p>
@@ -1914,40 +1909,30 @@ export default function App() {
                 <br />
                 moves with you
               </h2>
-              <p className="mb-10 max-w-md text-[15px] leading-relaxed text-slate-500">
+              <p className="mb-8 max-w-sm text-[15px] leading-relaxed text-slate-500">
                 Local desks across Korea, Hong Kong, China and ASEAN — one
                 operating cadence from origin cartage to airline uplift.
               </p>
-              <div className="space-y-2">
-                {NETWORK.map((n, i) => (
-                  <Reveal key={n.city} delay={i * 50}>
-                    <div className="flex gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 transition hover:border-wac-orange/30 hover:bg-white hover:shadow-[0_12px_40px_-24px_rgba(26,42,58,0.35)]">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wac-navy text-wac-orange">
-                        <MapPin className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-[15px] font-bold text-wac-navy">
-                          {n.city}
-                        </p>
-                        <p className="text-[12px] font-semibold text-slate-600">
-                          {n.focus}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">
-                          {n.blurb}
-                        </p>
-                      </div>
-                    </div>
-                  </Reveal>
+              <ul className="space-y-5 border-t border-slate-200 pt-6">
+                {NETWORK.map((n) => (
+                  <li key={n.city}>
+                    <p className="text-[15px] font-bold text-wac-navy">
+                      {n.city}
+                    </p>
+                    <p className="mt-0.5 text-[13px] font-medium text-slate-600">
+                      {n.focus}
+                    </p>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </Reveal>
 
-            <Reveal className="lg:col-span-7" delay={100}>
+            <Reveal className="lg:col-span-8" delay={100}>
               <div className="relative overflow-hidden rounded-[1.25rem] shadow-[0_32px_80px_-28px_rgba(26,42,58,0.55)]">
                 <img
                   src="/network-hub.jpg"
                   alt="WAC Asia cargo gateway"
-                  className="aspect-[16/11] h-full w-full object-cover"
+                  className="aspect-[16/10] h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-wac-navy/80 via-wac-navy/10 to-transparent" />
                 <div className="absolute right-0 bottom-0 left-0 p-6 sm:p-8">
