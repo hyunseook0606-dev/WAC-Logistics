@@ -16,6 +16,11 @@ dist-ssr
 !.env.example
 .vercel
 
+# Local / scratch (not portfolio)
+submission_candidate_*/
+docs/보고서-캡처/*추출*
+docs/보고서-캡처/*pdf추출*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

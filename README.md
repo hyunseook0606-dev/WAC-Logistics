@@ -1,78 +1,78 @@
 # WAC Logistics — Digital Freight Desk
 
-> Portfolio project: a **corporate logistics website** with a working **air Instant Quote** product and an internal **Origin Cost Desk** (variable trucking slots + local charge master).
+Portfolio MVP: corporate logistics site + **air Instant Quote** (Public) + internal **Origin Cost Desk**.
 
-**Live demo:** [https://wac-logistics.vercel.app](https://wac-logistics.vercel.app)
-
----
-
-## Why this exists
-
-WAC-style forwarders still quote many lanes via **Excel + email**. Even with rate APIs (e.g. CargoAI), **Hong Kong origin trucking and field fees** (cartage, tunnel, parking) change per job and cannot be fully automated.
-
-This project demonstrates:
-
-1. **UI** — full company landing (Hero, Solutions, Network, About, W Networks) in WAC brand colors  
-2. **Product logic** — chargeable weight, multi-carrier indicative air rates, and a desk cost sheet  
-3. **Real ops framing** — cost lines grounded in `cost item_origin.xlsx` + a real invoice (`INV_AE260703101`)
+**Live:** [https://wac-logistics.vercel.app](https://wac-logistics.vercel.app)  
+**Repo:** [hyunseook0606-dev/WAC-Logistics](https://github.com/hyunseook0606-dev/WAC-Logistics)
 
 ---
 
-## Two quote modes
+## Problem
+
+Freight desks still quote many lanes with **Excel + email**. Even with air-rate tools, **Hong Kong origin local / trucking fees** (cartage, tunnel, parking) change per job and do not sit cleanly on a monthly master — so staff re-enter and re-match the same shipment data.
+
+## What this MVP proves
+
+1. **Split the workflow** — shippers see indicative air only; desk owns formal origin cost.  
+2. **Split the cost model** — monthly Excel-style master auto-calcs; job-variable fees are explicit slots.  
+3. **Ground it in real docs** — `cost item_origin.xlsx` + sample `INV_AE260703101` (see metrics below).  
+4. **Make output pasteable** — Public email draft vs Desk HTML cost sheet for Outlook / Excel.
+
+It is **not** a claim that custom software replaces ops judgment, margin control, or quote→INV SOP.
+
+---
+
+## Validation (numbers)
+
+Sample INV non-air lines (**7**): Handling, CFS, Terminal, Document, Cartage, Tunnel, Parking.
+
+| Result | Share | Detail |
+|--------|------:|--------|
+| Exact master match | **2/7 (29%)** | Terminal Flat×C.W., Document Min |
+| Same formula, different amount | **2/7 (29%)** | Handling (Excel 150 vs INV **312**), CFS Min path |
+| Missing from Excel master | **3/7 (43%)** | Cartage / Tunnel / Parking → Desk slots |
+
+Full line table, formula, and limits: [`docs/검증-메트릭.md`](./docs/검증-메트릭.md)
+
+---
+
+## Two modes
 
 | Mode | Who | What |
 |------|-----|------|
-| **Public Quote** | Shipper / nominee | Origin–dest, dims, weight → **indicative air** only → Request Quote |
-| **WAC Desk** | Internal staff | Same cargo + **auto local master** + **Cartage / Tunnel / Parking** slots → formal HKD/USD sheet |
+| **Public Quote** | Shipper / nominee | Lane + dims + weight → C.W. + indicative air (USD) → Request Quote / **Copy Email Draft** |
+| **WAC Desk** | Internal | Same cargo + auto local master + Cartage/Tunnel/Parking slots + FX → Formal HKD/USD + **Copy Cost Sheet** |
 
-Shippers never enter tunnel/parking. Desk enters only what changes per job; Terminal / Document / CFS etc. auto-calc from a monthly-style master (`max(Min, Flat × C.W.)`).
-
----
-
-## Features
-
-- Full-bleed React **Hero** (parallax + brand CTA)
-- **Solutions** (Air → Instant Quote; Ocean / Road / Warehouse → official WAC; E-Com → Favvy)
-- Instant Quote: 12 carriers, weight breaks, MYC / extras, email draft copy
-- Desk: EXP local master, variable slots, FX, optional X-ray / ULD / DG / WH Reg
-- Network, About, W Networks, responsive layout, scroll reveal
+Local per-kg lines: `max(Min, Flat × C.W.)`.  
+C.W.: `max(gross, L×W×H / 6000)`.
 
 ---
 
-## Tech stack
+## Stack
 
-- React 19 + TypeScript + Vite  
-- Tailwind CSS v4  
-- Lucide icons  
-- Deployed on **Vercel**
-
----
-
-## Project structure
+React 19 · TypeScript · Vite · Tailwind CSS v4 · Lucide · Vercel
 
 ```
 src/
-  App.tsx          # Page shell + Quote / Desk UI
-  Hero.tsx         # Enterprise hero
-  originCost.ts    # Local master + variable-slot cost engine
-  index.css        # Brand tokens + motion
-public/
-  solutions/       # Solution card art
-  services/        # Photo covers
-  hero-cargo-takeoff.png
-docs/              # Cost analysis & weekly-report notes (KR)
+  App.tsx          # Landing + Quote / Desk UI
+  Hero.tsx
+  originCost.ts    # EXP local master + variable-slot engine
+  fx.ts            # USD→HKD (Frankfurter + fallback 7.8)
+docs/
+  검증-메트릭.md   # Portfolio metrics (start here)
+  주간보고-Public-vs-Desk.md
+  변동비-고정비-UI방향.md
+  보고서-캡처/     # Screen pack + captions
 ```
 
 ---
 
-## Run locally
+## Run
 
 ```bash
 npm install
 npm run dev
 ```
-
-Build:
 
 ```bash
 npm run build
@@ -81,23 +81,27 @@ npm run preview
 
 ---
 
-## Notes / limits (honest)
+## Honest limits
 
-- Air rates are **mock** until CargoAI / a rate DB is connected  
-- Local master numbers are from a sample Excel sheet (monthly validity pattern)  
-- Variable slot defaults come from one sample HK invoice — desk must edit per job  
-- Not a production WAC system; built as an **internship / portfolio MVP**
+- Air rates are **mock** (no CargoAI / internal rate DB wired).  
+- Master amounts follow one monthly Excel pattern; slots default from one INV.  
+- Handling mismatch is documented on purpose — full auto-calc would hide real ops variance.  
+- Internship direction after this MVP: deepen **cost/profit literacy**, **quote→INV data linkage / SOP**, and **W EXPRESS** improvement research — not further custom build of this desk.
 
 ---
 
-## Docs (Korean)
+## Docs
 
-- [`docs/변동비-고정비-UI방향.md`](./docs/변동비-고정비-UI방향.md) — fixed vs variable costs, DHL / Pantos notes  
-- [`docs/주간보고-Public-vs-Desk.md`](./docs/주간보고-Public-vs-Desk.md) — Public vs Desk + questions for ops (plain language)
+| Doc | Purpose |
+|-----|---------|
+| [검증-메트릭.md](./docs/검증-메트릭.md) | Line matching + portfolio metrics |
+| [주간보고-Public-vs-Desk.md](./docs/주간보고-Public-vs-Desk.md) | Public vs Desk + ops questions |
+| [변동비-고정비-UI방향.md](./docs/변동비-고정비-UI방향.md) | Fixed vs variable cost framing |
+| [보고서-캡처/](./docs/보고서-캡처/) | Screenshots for demos / reports |
 
 ---
 
 ## Author
 
-Built as a portfolio piece around WAC logistics quote workflows.  
-Repo: [hyunseook0606-dev/WAC-Logistics](https://github.com/hyunseook0606-dev/WAC-Logistics)
+Internship / portfolio piece around WAC-style air quote workflows.  
+Built by Hyunseo Ok.
