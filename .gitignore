@@ -31,3 +31,7 @@ docs/보고서-캡처/*pdf추출*
 *.njsproj
 *.sln
 *.sw?
+
+# Excel lock files
+~$*.xlsx
+excel-quote/~$*.xlsx

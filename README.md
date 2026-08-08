@@ -86,7 +86,7 @@ npm run preview
 - Air rates are **mock** (no CargoAI / internal rate DB wired).  
 - Master amounts follow one monthly Excel pattern; slots default from one INV.  
 - Handling mismatch is documented on purpose — full auto-calc would hide real ops variance.  
-- Internship direction after this MVP: deepen **cost/profit literacy**, **quote→INV data linkage / SOP**, and **W EXPRESS** improvement research — not further custom build of this desk.
+- CM internship deliverable is the **Excel simulator** (`excel-quote/`). Web Desk can import the same Master_DB for portfolio demo only.
 
 ---
 

@@ -10,6 +10,7 @@ import {
   Calculator,
   Lock,
   ExternalLink,
+  FileSpreadsheet,
 } from 'lucide-react'
 import {
   VARIABLE_SLOT_DEFAULTS,
@@ -21,6 +22,13 @@ import {
 } from './originCost'
 import { Hero } from './Hero'
 import { fetchUsdToHkd } from './fx'
+import {
+  calcCmQuote,
+  parseCmMasterFile,
+  parseCmMasterFromWorkbook,
+  type CmMaster,
+} from './cmExcelMaster'
+import * as XLSX from 'xlsx'
 
 type Cargo = {
   length: number
@@ -897,6 +905,10 @@ export default function App() {
     other: VARIABLE_SLOT_DEFAULTS.other,
     otherLabel: 'Other / Ad-hoc',
   })
+  const [cmMaster, setCmMaster] = useState<CmMaster | null>(null)
+  const [cmQty, setCmQty] = useState(1)
+  const [cmImportMsg, setCmImportMsg] = useState('')
+  const cmFileRef = useRef<HTMLInputElement>(null)
 
   const refreshFx = async () => {
     setFxLoading(true)
@@ -910,8 +922,46 @@ export default function App() {
     void refreshFx()
   }, [])
 
+  /** Portfolio: auto-load CM Excel Master_DB bundled in /public/excel */
+  useEffect(() => {
+    if (quoteMode !== 'desk' || cmMaster) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/excel/WAC_Air_Quotation_Simulator.xlsx')
+        if (!res.ok) return
+        const buf = await res.arrayBuffer()
+        const wb = XLSX.read(buf, { type: 'array' })
+        if (cancelled) return
+        setCmMaster(
+          parseCmMasterFromWorkbook(wb, 'WAC_Air_Quotation_Simulator.xlsx'),
+        )
+        setCmImportMsg('CM Master_DB loaded from bundled Excel')
+      } catch {
+        /* optional asset */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [quoteMode, cmMaster])
+
   const volWeight = (cargo.length * cargo.width * cargo.height) / 6000
   const cw = Math.max(Number(cargo.weight) || 0, volWeight || 0)
+
+  const cmQuote = useMemo(() => {
+    if (!cmMaster) return null
+    return calcCmQuote(cmMaster, {
+      origin,
+      destination,
+      length: Number(cargo.length) || 0,
+      width: Number(cargo.width) || 0,
+      height: Number(cargo.height) || 0,
+      qty: cmQty,
+      gross: Number(cargo.weight) || 0,
+      blCount: 1,
+    })
+  }, [cmMaster, origin, destination, cargo, cmQty])
 
   const quotes = useMemo(() => {
     return CARRIERS.map((c) => {
@@ -1497,6 +1547,101 @@ export default function App() {
                     </div>
                   )}
 
+                  {quoteMode === 'desk' && (
+                    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-wac-navy" />
+                        <p className="text-[11px] font-bold tracking-wider text-wac-navy uppercase">
+                          CM Excel Master link
+                        </p>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-500">
+                        Import the same Master_DB used in the CM quotation
+                        workbook. Route must match a master key (e.g. ICN-HKG).
+                        Portfolio demo — company deliverable remains the Excel
+                        file.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href="/excel/WAC_Air_Quotation_Simulator.xlsx"
+                          download
+                          className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-700 hover:border-wac-orange"
+                        >
+                          Download Excel
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => cmFileRef.current?.click()}
+                          className="inline-flex h-9 items-center rounded-lg bg-wac-navy px-3 text-[11px] font-bold text-white hover:bg-[#243447]"
+                        >
+                          Import Master_DB
+                        </button>
+                        <input
+                          ref={cmFileRef}
+                          type="file"
+                          accept=".xlsx,.xls"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            e.target.value = ''
+                            if (!file) return
+                            void (async () => {
+                              try {
+                                const master = await parseCmMasterFile(file)
+                                setCmMaster(master)
+                                setCmImportMsg(
+                                  `Loaded ${master.air.length} routes · ${master.local.length} local lines`,
+                                )
+                                setToast('CM Excel Master imported')
+                              } catch (err) {
+                                setCmImportMsg(
+                                  err instanceof Error
+                                    ? err.message
+                                    : 'Import failed',
+                                )
+                              }
+                            })()
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                          Qty (pcs)
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={cmQty}
+                          onChange={(e) =>
+                            setCmQty(Math.max(1, Number(e.target.value) || 1))
+                          }
+                          className="h-9 w-20 rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium outline-none focus:border-wac-orange"
+                        />
+                      </div>
+                      {cmImportMsg && (
+                        <p className="text-[11px] text-slate-600">{cmImportMsg}</p>
+                      )}
+                      {cmMaster && !cmQuote && (
+                        <p className="text-[11px] text-amber-700">
+                          No Master rate for {origin}-{destination}. Try ICN-HKG
+                          or ICN-LAX.
+                        </p>
+                      )}
+                      {cmQuote && (
+                        <p className="text-[12px] font-semibold text-wac-navy">
+                          Excel-linked APPX:{' '}
+                          <span className="text-wac-orange">
+                            USD {cmQuote.total.toFixed(2)}
+                          </span>
+                          <span className="ml-2 font-normal text-slate-500">
+                            ({cmQuote.route} · {cmQuote.breakLabel} · C.W.{' '}
+                            {cmQuote.cw.toFixed(1)} kg)
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {formError && (
                     <p className="rounded border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-600">
                       {formError}
@@ -1557,6 +1702,48 @@ export default function App() {
                 </div>
               ) : quoteMode === 'desk' && deskSheet && selectedDeskQuote ? (
                 <div className="space-y-4">
+                  {cmQuote && (
+                    <div className="rounded-xl border border-wac-navy/15 bg-white p-5 shadow-sm">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4 text-wac-navy" />
+                          <h3 className="text-sm font-bold text-wac-navy">
+                            CM Excel Master estimate (USD)
+                          </h3>
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          Same logic as Quote sheet · dummy master
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[12px] sm:grid-cols-4">
+                        {(
+                          [
+                            ['Air Freight', cmQuote.airFreight],
+                            ['FSC', cmQuote.fsc],
+                            ['SSC', cmQuote.ssc],
+                            ['Handling', cmQuote.handling],
+                            ['Doc', cmQuote.doc],
+                            ['Trucking', cmQuote.trucking],
+                          ] as const
+                        ).map(([label, amt]) => (
+                          <div
+                            key={label}
+                            className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+                          >
+                            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                              {label}
+                            </p>
+                            <p className="font-semibold text-slate-700">
+                              ${amt.toFixed(2)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-right text-lg font-extrabold text-wac-navy">
+                        TOTAL APPX. ${cmQuote.total.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
                   <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
